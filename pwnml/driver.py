@@ -19,8 +19,8 @@ from six.moves import xrange
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-import utils
-from lenet5 import LeNet5
+import utils.utils as utils
+from models.lenet5 import LeNet5
 
 # FIXME: Move to config class
 SOURCE_URL = 'http://yann.lecun.com/exdb/mnist/'
@@ -35,7 +35,7 @@ BATCH_SIZE = 64
 NUM_EPOCHS = 10
 EVAL_BATCH_SIZE = 64
 EVAL_FREQUENCY = 100  # Number of steps between evaluations.
-CHECKPOINT_PATH = '/Users/cchio/Desktop/lenet/fucking.ckpt'
+CHECKPOINT_PATH = 'checkpoints/prototype.ckpt'
 DATA_TYPE = tf.float32
 
 tf.app.flags.DEFINE_boolean("self_test", False, "True if running a self test.")

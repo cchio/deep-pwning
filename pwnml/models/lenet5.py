@@ -1,6 +1,6 @@
 import tensorflow as tf
 
-import utils
+import utils.utils as utils
 
 SOURCE_URL = 'http://yann.lecun.com/exdb/mnist/'
 WORK_DIRECTORY = 'data'
@@ -14,7 +14,7 @@ BATCH_SIZE = 64
 NUM_EPOCHS = 10
 EVAL_BATCH_SIZE = 64
 EVAL_FREQUENCY = 100  # Number of steps between evaluations.
-CHECKPOINT_PATH = '/Users/cchio/Desktop/lenet/fucking.ckpt'
+CHECKPOINT_PATH = 'checkpoints/prototype.ckpt'
 DATA_flavor = tf.float32
 
 class LeNet5:

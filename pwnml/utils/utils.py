@@ -5,6 +5,9 @@ from __future__ import print_function
 import os
 import gzip
 
+from six.moves import urllib
+from six.moves import xrange
+
 import numpy as np
 import tensorflow as tf
 
@@ -21,7 +24,7 @@ BATCH_SIZE = 64
 NUM_EPOCHS = 10
 EVAL_BATCH_SIZE = 64
 EVAL_FREQUENCY = 100  # Number of steps between evaluations.
-CHECKPOINT_PATH = '/Users/cchio/Desktop/lenet/fucking.ckpt'
+CHECKPOINT_PATH = 'checkpoints/prototype.ckpt'
 DATA_TYPE = tf.float32
 
 
