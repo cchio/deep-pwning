@@ -92,5 +92,5 @@ ENV/
 .ropeproject
 
 # PWNML specific ignores
-pwnml/data/
-checkpoints/
+pwnml/data/*
+checkpoints/*

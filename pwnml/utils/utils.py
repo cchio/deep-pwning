@@ -10,7 +10,7 @@ from six.moves import xrange
 
 import numpy as np
 import tensorflow as tf
-
+import matplotlib.pyplot as plt
 
 SOURCE_URL = 'http://yann.lecun.com/exdb/mnist/'
 WORK_DIRECTORY = 'data'
@@ -82,15 +82,33 @@ def error_rate(predictions, labels):
       np.sum(np.argmax(predictions, 1) == labels) /
       predictions.shape[0])
 
-def compare_mnist_digits(im1, im2, im1_label, im2_label):
+def ensure_dir(f):
+  d = os.path.dirname(f)
+  if not os.path.exists(d):
+    os.makedirs(d)
+
+def compare_mnist_digits(im1, im2, im1_label, im2_label, idx, perturbation=.0, out_dir='', method=''):
   """ Plot 2 MNIST images side by side."""
+  ensure_dir('{0}/fooled/{1}/'.format(out_dir, perturbation))
+  ensure_dir('{0}/not-fooled/{1}/'.format(out_dir, perturbation))
+
   fig = plt.figure()
   ax = fig.add_subplot(1, 2, 1)
   ax.matshow(im1, cmap='Greys')
   plt.title('im1 predicted label: ' + str(im1_label))
+  plt.xticks(np.array([]))
+  plt.yticks(np.array([]))
   ax = fig.add_subplot(1, 2, 2)
   ax.matshow(im2, cmap='Greys')
   plt.title('im2 predicted label: ' + str(im2_label))
   plt.xticks(np.array([]))
   plt.yticks(np.array([]))
-  plt.show()
+
+  if not out_dir:
+    plt.show()
+  else:
+    if im1_label != im2_label:
+      out_path = '{0}/fooled/{1}/{2}-{3}.png'.format(out_dir, perturbation, method, idx)
+    else:
+      out_path = '{0}/not-fooled/{1}/{2}-{3}.png'.format(out_dir, perturbation, method, idx)
+    fig.savefig(out_path)

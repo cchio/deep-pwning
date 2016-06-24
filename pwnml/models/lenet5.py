@@ -46,8 +46,9 @@ class LeNet5:
   def train_input_placeholders(self):
     x = tf.placeholder(
       DATA_flavor,
-      shape=(BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS))
-    y_ = tf.placeholder(tf.int64, shape=(BATCH_SIZE,))
+      shape=[None, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS],
+      name="x")
+    y_ = tf.placeholder(tf.int64, shape=[None,], name="y_")
     return x, y_
 
   def model(self, data):
@@ -66,13 +67,13 @@ class LeNet5:
 
     pool2_shape = pool2.get_shape().as_list()
     pool2_reshaped = tf.reshape(pool2,
-      [pool2_shape[0], pool2_shape[1] * pool2_shape[2] * pool2_shape[3]])
+      [-1, pool2_shape[1] * pool2_shape[2] * pool2_shape[3]])
 
     fc1_W = self.variable('W', [IMAGE_SIZE // 4 * IMAGE_SIZE // 4 * 64, 512])
     fc1_b = self.variable('b', [512])
     fc1 = tf.nn.relu(tf.matmul(pool2_reshaped, fc1_W) + fc1_b)
 
-    keep_prob = tf.placeholder("float")
+    keep_prob = tf.placeholder("float", name="keep_prob")
     fc1_dropout = tf.nn.dropout(fc1, keep_prob, seed=SEED)
 
     fc2_W = self.variable('W', [512, NUM_LABELS])

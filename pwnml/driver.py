@@ -75,15 +75,10 @@ def main(argv=None):
     num_epochs = NUM_EPOCHS
   train_size = train_labels.shape[0]
 
-
   lenet5 = LeNet5()
 
   x, y_ = lenet5.train_input_placeholders()
   y_conv, logits, keep_prob, param_dict = lenet5.model(x)
-
-  eval_data = tf.placeholder(
-      DATA_TYPE,
-      shape=(EVAL_BATCH_SIZE, IMAGE_SIZE, IMAGE_SIZE, NUM_CHANNELS))
 
   loss = tf.reduce_mean(
     tf.nn.sparse_softmax_cross_entropy_with_logits(
@@ -171,57 +166,67 @@ def main(argv=None):
               eval_in_batches(validation_data, sess), validation_labels))
           sys.stdout.flush()
     
-    # Finally print the result!
-    test_error = utils.error_rate(eval_in_batches(test_data, sess), test_labels)
-    print('Test error: %.1f%%' % test_error)
-    if FLAGS.self_test:
-      print('test_error', test_error)
-      assert test_error == 0.0, 'expected 0.0 test_error, got %.2f' % (
-          test_error,)
+    # # Finally print the result!
+    # test_error = utils.error_rate(eval_in_batches(test_data, sess), test_labels)
+    # print('Test error: %.1f%%' % test_error)
+    # if FLAGS.self_test:
+    #   print('test_error', test_error)
+    #   assert test_error == 0.0, 'expected 0.0 test_error, got %.2f' % (
+    #       test_error,)
 
   # FIXME: MOVE ADVERSARIAL GENERATION TO SEPARATE INPUT
 
-  # # Generating adversarial input - Fast Gradient Descent Method
-  # x = tf.placeholder("float", shape=[1, 28, 28, 1])
-  # y_ = tf.placeholder("float", shape=[10])
-  # y_conv = model(x)
+  # Generating adversarial input - Fast Gradient Descent Method
 
-  # not_fooled = .0
-  # fooled = .0
+  ## USING TENSORS DEFINED ABOVE
+  # x = tf.placeholder("float", shape=[1, 28, 28, 1], name="x")
+  # y_ = tf.placeholder("float", shape=[10], name="y_")
+  # y_conv, logits, keep_prob, param_dict = lenet5.model(x)
 
-  # correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
-  # accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
-  # cross_entropy = -tf.reduce_sum(y_*tf.log(y_conv))
-  # grad = tf.gradients(cross_entropy, x)
+  PERTURBATION = .1
+  not_fooled = .0
+  fooled = .0
 
-  # sess = tf.Session()
-  # saver.restore(sess, CHECKPOINT_PATH)
-  # for idx in xrange(len(test_data)):
-  #   if idx % 100 == 0:
-  #     print(idx)
-  #   image = test_data[idx]
-  #   label = test_labels[idx]
-  #   y_onehot = np.eye(10)[label]
+  correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
+  accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
+  cross_entropy = -tf.reduce_sum(tf.cast(y_, "float")*tf.log(y_conv))
+  grad = tf.gradients(cross_entropy, x)
 
-  #   pred = sess.run(y_conv, feed_dict={x:np.reshape(image, [1, 28, 28, 1])})
-  #   label = np.argmax(pred)
-  #   grad_val = sess.run(grad, feed_dict={x:np.reshape(image, [1, 28, 28, 1]), y_:y_onehot})
-  #   grad_sign = np.sign(grad_val[0])
-  #   grad_norm = sum([np.abs(W) for W in grad_val[0]])
-  #   grad_sign = np.sign(grad_val[0])
-  #   grad_norm = sum([np.abs(W) for W in grad_val[0]])
-  #   adv_image = .1 * grad_sign + image
-  #   adv_pred = sess.run(y_conv, feed_dict={x:adv_image})
-  #   adv_label = np.argmax(adv_pred)
+  sess = tf.Session()
+  tf.initialize_all_variables().run(session=sess)
+  saver.restore(sess, CHECKPOINT_PATH)
+  for idx in xrange(len(test_data)):
+    if idx % 100 == 0:
+      print(idx)
+    image = test_data[idx]
+    label = test_labels[idx]
+    y_onehot = np.eye(10)[label]
 
-  #   if (adv_label != label):
-  #     fooled = fooled + 1
-  #     # Plotting original and adversarial image side-by-side
-  #     compare_mnist_digits(
-  #       np.reshape(image, [28,28]), np.reshape(adv_image, [28,28]),
-  #       label, adv_label)
-  #   else:
-  #     not_fooled = not_fooled + 1
+    pred = sess.run(y_conv, feed_dict={x: (np.reshape(image, [1, 28, 28, 1])), keep_prob: 1.0})
+    label = np.argmax(pred)
+    grad_val = sess.run(grad, feed_dict={x:np.reshape(image, [1, 28, 28, 1]), y_:y_onehot, keep_prob: 1.0})
+    grad_sign = np.sign(grad_val[0])
+    grad_norm = sum([np.abs(W) for W in grad_val[0]])
+
+    for perturbation in np.linspace(.01, .15, 15):
+      adv_image = perturbation * grad_sign + image
+      adv_pred = sess.run(y_conv, feed_dict={x:adv_image, keep_prob: 1.0})
+      adv_label = np.argmax(adv_pred)
+
+      if (adv_label != label):
+        fooled = fooled + 1
+        # Plotting original and adversarial image side-by-side
+        utils.compare_mnist_digits(
+          np.reshape(image, [28,28]),
+          np.reshape(adv_image, [28,28]),
+          label,
+          adv_label,
+          idx,
+          perturbation,
+          out_dir='output/adversarial-mnist',
+          method='fgd')
+      else:
+        not_fooled = not_fooled + 1
 
   # # Generating adversarial input - Jacobian Method
   # x = tf.placeholder("float", shape=[1, 28, 28, 1])
@@ -265,9 +270,9 @@ def main(argv=None):
   #   else:
   #     not_fooled = not_fooled + 1
 
-  # print("Adversarial sample yield: ", fooled/(fooled+not_fooled))
-  # print("Adversarial samples fooled: ", fooled)
-  # print("Adversarial samples not fooled: ", not_fooled)
+  print("Adversarial sample yield: ", fooled/(fooled+not_fooled))
+  print("Adversarial samples fooled: ", fooled)
+  print("Adversarial samples not fooled: ", not_fooled)
 
 if __name__ == '__main__':
   tf.app.run()
