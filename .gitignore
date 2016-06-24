@@ -93,4 +93,4 @@ ENV/
 
 # PWNML specific ignores
 pwnml/data/*
-checkpoints/*
+pwnml/checkpoints/*
