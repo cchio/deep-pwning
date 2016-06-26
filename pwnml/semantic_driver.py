@@ -115,6 +115,16 @@ def main(argv=None):
     cross_entropy = -tf.reduce_sum(tf.cast(y_, "float") * tf.log(y_conv))
     grad = tf.gradients(cross_entropy, embedded_words)
 
+    # http://stackoverflow.com/questions/20038011/trying-to-find-majority-element-in-a-list
+    def find_majority(k):
+        myMap = {}
+        maximum = ('', 0) # (occurring element, occurrences)
+        for n in k:
+            if n in myMap: myMap[n] += 1
+            else: myMap[n] = 1
+            if myMap[n] > maximum[1]: maximum = (n,myMap[n])
+        return maximum[0]
+
     def train_step(x_batch, y_batch):
         feed_dict = {
           x: x_batch,
@@ -140,14 +150,21 @@ def main(argv=None):
 
         embed_W_val = embed_W.eval()
 
+        print("")
         if generate_adversarial:
+            num_differs = 0
             for idx in xrange(len(x_batch)):
                 x_sample = [x_batch[idx]]
                 y_sample = [y_batch[idx]]
                 pred = y_conv.eval(feed_dict={x:x_sample, keep_prob:1.0})
                 pred_label = np.argmax(pred)
-                cross_entropy_val = sess.run(cross_entropy, feed_dict={x:x_sample, y_:y_sample, keep_prob: 1.0})
-                grad_val = sess.run(grad, feed_dict={x:x_sample, y_:y_sample, keep_prob: 1.0})
+                correct_label = np.argmax(y_sample)
+
+                target_label = [np.eye(config.num_classes)[np.abs(correct_label-1)]]
+                cross_entropy_val = sess.run(cross_entropy, feed_dict={x:x_sample, y_:target_label, keep_prob: 1.0})
+
+                # Mess around with gradient
+                grad_val = sess.run(grad, feed_dict={x:x_sample, y_:target_label, keep_prob: 1.0})
                 grad_sign = np.sign(grad_val[0])
                 x_sample_str = ''.join(vocab_processor.reverse(x_sample)).replace('<UNK>', '').strip()
 
@@ -160,16 +177,31 @@ def main(argv=None):
                 # maybe the cnn is too deep for the amt of data... overfitting is definitely happening...
 
                 adv_x_sample = []
-                adv_embedded_words_val = embedded_words.eval(feed_dict={x:x_sample}) + 0.9 * grad_sign
+                adv_embedded_words_val = embedded_words.eval(feed_dict={x:x_sample}) # + 0.1 * grad_sign
                 for word_vec in adv_embedded_words_val[0]:
                     word_vec_dist_matrix = np.absolute((embed_W_val - word_vec))
-                    closest_match_idx = np.sum(word_vec_dist_matrix, axis=1).argmin()
+                    closest_match_idx = np.sum(word_vec_dist_matrix, axis=1).argmax()
                     adv_x_sample.append(closest_match_idx)
+                majority_val = find_majority(adv_x_sample)
+                for index, item in enumerate(adv_x_sample):
+                    if item == majority_val:
+                        adv_x_sample[index] = 0
                 adv_x_sample_str = ''.join(vocab_processor.reverse([adv_x_sample])).replace('<UNK>', '').strip()
+                adv_pred = y_conv.eval(feed_dict={x:[adv_x_sample], keep_prob:1.0})
+                adv_pred_label = np.argmax(pred)
 
-                # adv_x_sample_str = ''.join(vocab_processor.reverse(adv_x_sample)).replace('<UNK>', '').strip()
-                print("Original test string: \"" + x_sample_str + "\"")
+                print("Original test string:    \"" + x_sample_str + "\"")
                 print("Adversarial test string: \"" + adv_x_sample_str + "\"")
+                print("Correct Label: {0}, Predicted Label: {1}, Adversarial Label: {2}"
+                    .format(correct_label, pred_label, adv_pred_label))
+                if correct_label == pred_label:
+                    print("Correct Prediction.\n")
+                else:
+                    print("\n")
+                if pred_label != adv_pred_label:
+                    num_differs = num_differs + 1
+                    print("Adversarial prediction differs.\n")
+            print("Number of differing adversarial predictions: " + str(num_differs))
 
     def batch_iter(data, batch_size, num_epochs, shuffle=True):
         """
@@ -195,24 +227,29 @@ def main(argv=None):
     # Generate batches
     with tf.Session() as sess:
         sess.run(tf.initialize_all_variables())
-        batches = batch_iter(
-            list(zip(x_train, y_train)), config.batch_size, config.num_epochs)
-        # Training loop. For each batch...
-        for batch in batches:
-            x_batch, y_batch = zip(*batch)
-            train_step(x_batch, y_batch)
-            current_step = tf.train.global_step(sess, global_step)
-            if current_step % config.eval_frequency == 0:
-                print("\nEvaluation:")
-                eval_step(x_eval, y_eval, writer=None)
-                print("")
-                # FIXME: check if checkpoint path exists, create if doesn't
-                path = saver.save(sess, config.checkpoint_path)
-                print("Saved model checkpoint to {}\n".format(path))
+        if FLAGS.checkpoint:
+            tf.initialize_all_variables().run(session=sess)
+            saver.restore(sess, FLAGS.checkpoint)
+        else:
+            batches = batch_iter(
+                list(zip(x_train, y_train)), config.batch_size, config.num_epochs)
+            # Training loop. For each batch...
+            for batch in batches:
+                x_batch, y_batch = zip(*batch)
+                train_step(x_batch, y_batch)
+                current_step = tf.train.global_step(sess, global_step)
+                if current_step % config.eval_frequency == 0:
+                    print("\nEvaluation:")
+                    eval_step(x_eval, y_eval, writer=None)
+                    print("")
+                    # FIXME: check if checkpoint path exists, create if doesn't
+                    path = saver.save(sess, config.checkpoint_path)
+                    print("Saved model checkpoint to {}\n".format(path))
+
 
         # Time to test
         print("\nTest Results:")
-        eval_step(x_test, y_test, writer=None, generate_adversarial=False)
+        eval_step(x_test, y_test, writer=None, generate_adversarial=True)
         print("")
 
     # input_dict = {

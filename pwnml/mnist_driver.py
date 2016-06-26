@@ -112,7 +112,7 @@ def main(argv=None):
     evaluator = Evaluator(FLAGS, optimizer, learning_rate, loss, saver)
     evaluator.run(input_dict)
 
-    fgs_adversarial_generator = FGS_AdversarialGenerator([1, 28, 28, 1], saver)
+    fgs_adversarial_generator = FGS_AdversarialGenerator(FLAGS, [1, 28, 28, 1], saver)
     adversarial_output_df = fgs_adversarial_generator.run(input_dict)
     # CHECK IF IMAGE OUTPUT PATH DEFINED THEN OUTPUT IMAGE, IF PICKLE FILE PATH DEFINED THEN SAVE PICKLE?
     utils.ensure_dir(os.path.dirname(config.pickle_filepath))

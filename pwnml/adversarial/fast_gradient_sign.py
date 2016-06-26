@@ -13,7 +13,8 @@ import config.mnist_config as config
 
 class FGS_AdversarialGenerator:
 
-    def __init__(self, input_x_shape, saver):
+    def __init__(self, FLAGS, input_x_shape, saver):
+        self.FLAGS = FLAGS
         self.input_x_shape = input_x_shape
         self.saver = saver
 
@@ -34,7 +35,7 @@ class FGS_AdversarialGenerator:
 
         sess = tf.Session()
         tf.initialize_all_variables().run(session=sess)
-        self.saver.restore(sess, config.checkpoint_path)
+        self.saver.restore(sess, self.FLAGS.checkpoint)
         df = pd.DataFrame()
 
         start_time = time.time()
