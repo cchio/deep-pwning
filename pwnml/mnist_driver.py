@@ -103,13 +103,12 @@ def main(argv=None):
         "test_labels": test_labels,
         "validation_data": validation_data,
         "validation_labels": validation_labels,
-        "train_data": train_data,
-        "train_labels": train_labels,
         "num_epochs": num_epochs,
         "train_size": train_size
     }
 
-    saver = tf.train.Saver()
+    saver = tf.train.Saver(tf.all_variables())
+
     evaluator = Evaluator(FLAGS, optimizer, learning_rate, loss, saver)
     evaluator.run(input_dict)
 

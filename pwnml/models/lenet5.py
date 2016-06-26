@@ -23,7 +23,7 @@ class LeNet5:
                 tf.truncated_normal(shape,
                                     stddev=0.1,
                                     seed=config.seed, 
-                                    dtype=config.data_type))      
+                                    dtype=config.data_type))
         elif flavor == 'b':
             return tf.Variable(tf.constant(0.1, shape=shape), 
                                dtype=config.data_type)

@@ -10,7 +10,10 @@ import numpy as np
 import tensorflow as tf
 
 import utils.utils as utils
-import config.mnist_config as config
+# FIXME: DECIDE WHICH CONFIG TO USE BASED ON ARGUMENT? FLAG? 
+# OR JUST MAKE CONFIG AN OBJECT PASSED INTO TO EVALUATOR INIT 
+# import config.mnist_config as config
+import config.semantic_config as config
 
 class Evaluator:
 
@@ -48,12 +51,10 @@ class Evaluator:
         keep_prob = input_dict["keep_prob"]
         train_data = input_dict["train_data"]
         train_labels = input_dict["train_labels"]
-        test_data = input_dict["test_data"]
-        test_labels = input_dict["test_labels"]
+        # test_data = input_dict["test_data"]
+        # test_labels = input_dict["test_labels"]
         validation_data = input_dict["validation_data"]
         validation_labels = input_dict["validation_labels"]
-        train_data = input_dict["train_data"]
-        train_labels = input_dict["train_labels"]
         num_epochs = input_dict["num_epochs"]
         train_size = input_dict["train_size"]
 
@@ -79,10 +80,10 @@ class Evaluator:
                     }
 
                     _, l, lr, predictions = sess.run(
-                        [self.optimizer, self.loss, self.learning_rate, y_conv],
-                        feed_dict=feed_dict)
+                        [self.optimizer, self.loss, self.learning_rate, y_conv], feed_dict=feed_dict)
                     if step % config.eval_frequency == 0:
-                        self.saver.save(sess, config.checkpoint_path)
+                        path = self.saver.save(sess, config.checkpoint_path)
+                        print("Saved model checkpoint to {}\n".format(path))
                         elapsed_time = time.time() - start_time
                         start_time = time.time()
                         print('Step %d (epoch %.2f), %.1f ms' %

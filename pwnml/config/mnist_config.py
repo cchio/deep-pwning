@@ -7,7 +7,6 @@ train_labels_filename = 'train-labels-idx1-ubyte.gz'
 test_data_filename = 't10k-images-idx3-ubyte.gz'
 test_labels_filename = 't10k-labels-idx1-ubyte.gz'
 
-
 image_size = 28
 num_channels = 1
 pixel_depth = 255
