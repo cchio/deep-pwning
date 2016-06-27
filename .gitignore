@@ -93,5 +93,5 @@ ENV/
 
 # PWNML specific ignores
 dpwn/data/*
-dpwn/checkpoints/*
+# dpwn/checkpoints/*
 dpwn/output/*
