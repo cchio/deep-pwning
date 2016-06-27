@@ -8,7 +8,7 @@ import sys
 import re
 import time
 import datetime
-import pickle
+from ConfigParser import SafeConfigParser
 
 import numpy as np
 from six.moves import urllib
@@ -20,12 +20,14 @@ import matplotlib.pyplot as plt
 import utils.utils as utils
 from models.semantic_cnn import SemanticCNN
 from evaluator import Evaluator
-import config.semantic_config as config
 from adversarial.wordvec_advgen import WordVec_AdvGen
 
-tf.app.flags.DEFINE_string('checkpoint', '', 'Tensorflow session checkpoint file path.')
-cmd_args = tf.app.flags.cmd_args
+tf.app.flags.DEFINE_string('config_path', './config/semantic.conf', 'Application configuration file.')
+tf.app.flags.DEFINE_boolean('restore_checkpoint', False, 'Skip training, restore from checkpoint.')
+tf.app.flags.DEFINE_boolean('test', False, 'Test run with a fraction of the data.')
+cmd_args = tf.app.flags.FLAGS
 
+# FIXME: Move to utils
 def clean_str(string):
     """
     Tokenization/string cleaning for all datasets except for SST.
@@ -46,15 +48,16 @@ def clean_str(string):
     string = re.sub(r"\s{2,}", " ", string)
     return string.strip().lower()
 
+# FIXME: Move to utils, just like we're doing with the mnist module
 def load_data_and_labels():
     """
     Loads MR polarity data from files, splits the data into words and generates labels.
     Returns split sentences and labels.
     """
     # Load data from files
-    positive_examples = list(open("./data/rt-polaritydata/rt-polarity.pos", "r").readlines())
+    positive_examples = list(open("./data/semantic/rt-polaritydata/rt-polarity.pos", "r").readlines())
     positive_examples = [s.strip() for s in positive_examples]
-    negative_examples = list(open("./data/rt-polaritydata/rt-polarity.neg", "r").readlines())
+    negative_examples = list(open("./data/semantic/rt-polaritydata/rt-polarity.neg", "r").readlines())
     negative_examples = [s.strip() for s in negative_examples]
     # Split by words
     x_text = positive_examples + negative_examples
@@ -66,9 +69,11 @@ def load_data_and_labels():
     return [x_text, y]
 
 def main(argv=None):
-
-    if cmd_args.checkpoint:
-        print('Loading model checkpoint from: ', cmd_args.checkpoint)
+    config = SafeConfigParser()
+    config.read(cmd_args.config_path)
+    if cmd_args.restore_checkpoint:
+        print('Skipping training phase, loading model checkpoint from: ', 
+            config.get('main', 'checkpoint_path'))
 
     x_text, y = load_data_and_labels()
 
@@ -79,7 +84,11 @@ def main(argv=None):
     x = np.array(list(vocab_processor.fit_transform(x_text)))
 
     # Randomly shuffle data
-    np.random.seed(10)
+    if config.get('main', 'seed') == 'None':
+        seed = None
+    else:
+        seed = config.getint('main', 'seed')
+    np.random.seed(seed)
     shuffle_indices = np.random.permutation(np.arange(len(y)))
     x_shuffled = x[shuffle_indices]
     y_shuffled = y[shuffle_indices]
@@ -90,10 +99,8 @@ def main(argv=None):
     print("Vocabulary Size: {:d}".format(len(vocab_processor.vocabulary_)))
     print("Train/Dev/Test split: {:d}/{:d}/{:d}".format(len(y_train), len(y_eval), len(y_test)))
 
-    semantic_cnn = SemanticCNN(x_train.shape[1],
-                               len(vocab_processor.vocabulary_),
-                               128,
-                               128)
+    semantic_cnn = SemanticCNN(config, x_train.shape[1],
+                               len(vocab_processor.vocabulary_), 128, 128)
 
     x, y_ = semantic_cnn.train_input_placeholders()
     y_conv, logits, keep_prob, l2_loss, embedded_words, embed_W = semantic_cnn.model(x)
@@ -104,7 +111,7 @@ def main(argv=None):
     # Add the regularization term to the loss.
     loss += 5e-4 * l2_loss
 
-    learning_rate = tf.Variable(tf.constant(1e-3), dtype=config.data_type)
+    learning_rate = tf.Variable(tf.constant(1e-3), dtype=tf.float32)
     global_step = tf.Variable(0, name="global_step", trainable=False)
     optimizer = tf.train.AdamOptimizer(learning_rate).minimize(loss, global_step=global_step)
 
@@ -125,7 +132,7 @@ def main(argv=None):
         "test_labels": y_test,
         "validation_data": x_eval,
         "validation_labels": y_eval,
-        "num_epochs": config.num_epochs,
+        "num_epochs": config.getint('main', 'num_epochs'),
         "train_size": len(y_train),
         "embedded_words": embedded_words,
         "vocab_processor": vocab_processor,
@@ -133,11 +140,11 @@ def main(argv=None):
     }
 
     saver = tf.train.Saver()
-    # ADD OPTION TO SHUFFLE BATCH DATA AT EACH EPOCH
-    evaluator = Evaluator(cmd_args, optimizer, learning_rate, loss, saver, onehot_labels=True)
+    evaluator = Evaluator(cmd_args, config, optimizer, 
+        learning_rate, loss, saver, onehot_labels=True)
     evaluator.run(input_dict)
 
-    wordvec_advgen = WordVec_AdvGen(cmd_args, saver)
+    wordvec_advgen = WordVec_AdvGen(cmd_args, saver, config)
     wordvec_advgen.run(input_dict)
 
 if __name__ == '__main__':

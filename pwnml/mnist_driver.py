@@ -7,6 +7,7 @@ import os
 import sys
 import time
 import pickle
+from ConfigParser import SafeConfigParser
 
 import numpy as np
 from six.moves import urllib
@@ -17,38 +18,48 @@ import matplotlib.pyplot as plt
 import utils.utils as utils
 from models.lenet5 import LeNet5
 from evaluator import Evaluator
-import config.mnist_config as config
 from adversarial.fastgradientsign_advgen import FastGradientSign_AdvGen
 
-tf.app.flags.DEFINE_string('checkpoint', '', 'Tensorflow session checkpoint file path.')
-cmd_args = tf.app.flags.cmd_args
+tf.app.flags.DEFINE_string('config_path', './config/mnist.conf', 'Application configuration file.')
+tf.app.flags.DEFINE_boolean('restore_checkpoint', False, 'Skip training, restore from checkpoint.')
+tf.app.flags.DEFINE_boolean('test', False, 'Test run with a fraction of the data.')
+cmd_args = tf.app.flags.FLAGS
 
 def main(argv=None):
-
-    if cmd_args.checkpoint:
-        print('Loading model checkpoint from: ', cmd_args.checkpoint)
+    config = SafeConfigParser()
+    config.read(cmd_args.config_path)
+    if cmd_args.restore_checkpoint:
+        print('Skipping training phase, loading model checkpoint from: ', 
+            config.get('main', 'checkpoint_path'))
 
     # Get the data.
-    train_data_filename = utils.maybe_download(config.train_data_filename)
-    train_labels_filename = utils.maybe_download(config.train_labels_filename)
-    test_data_filename = utils.maybe_download(config.test_data_filename)
-    test_labels_filename = utils.maybe_download(config.test_labels_filename)
+    train_data_filename = utils.maybe_download(config, 
+        config.get('data', 'train_data_filename'))
+    train_labels_filename = utils.maybe_download(config, 
+        config.get('data', 'train_labels_filename'))
+    test_data_filename = utils.maybe_download(config, 
+        config.get('data', 'test_data_filename'))
+    test_labels_filename = utils.maybe_download(config, 
+        config.get('data', 'test_labels_filename'))
 
     # Extract it into np arrays.
-    train_data = utils.extract_data(train_data_filename, 60000)
+    train_data = utils.extract_data(config, train_data_filename, 60000)
     train_labels = utils.extract_labels(train_labels_filename, 60000)
-    test_data = utils.extract_data(test_data_filename, 10000)
+    test_data = utils.extract_data(config, test_data_filename, 10000)
     test_labels = utils.extract_labels(test_labels_filename, 10000)
 
+    validation_size = config.getint('main', 'validation_size')
+    num_epochs = config.getint('main', 'num_epochs')
+
     # Generate a validation set.
-    validation_data = train_data[:config.validation_size, ...]
-    validation_labels = train_labels[:config.validation_size]
-    train_data = train_data[config.validation_size:, ...]
-    train_labels = train_labels[config.validation_size:]
-    num_epochs = config.num_epochs
+    validation_data = train_data[:validation_size, ...]
+    validation_labels = train_labels[:validation_size]
+    train_data = train_data[validation_size:, ...]
+    train_labels = train_labels[validation_size:]
+    num_epochs = num_epochs
     train_size = train_labels.shape[0]
 
-    lenet5 = LeNet5()
+    lenet5 = LeNet5(config)
 
     x, y_ = lenet5.train_input_placeholders()
     y_conv, logits, keep_prob, param_dict = lenet5.model(x)
@@ -66,14 +77,14 @@ def main(argv=None):
 
     # Optimizer: set up a variable that's incremented once 
     # per batch and controls the learning rate decay.
-    batch = tf.Variable(0, dtype=config.data_type)
+    batch = tf.Variable(0, dtype=tf.float32)
 
     # Decay once per epoch, using an exponential schedule starting at 0.01.
     learning_rate = tf.train.exponential_decay(
-        0.01,                # Base learning rate.
-        batch * config.batch_size,  # Current index into the dataset.
-        train_size,          # Decay step.
-        0.95,                # Decay rate.
+        0.01,
+        batch * config.getint('main', 'batch_size'),
+        train_size,
+        0.95,
         staircase=True)
 
     optimizer = tf.train.MomentumOptimizer(learning_rate, 0.9) \
@@ -96,14 +107,17 @@ def main(argv=None):
 
     saver = tf.train.Saver(tf.all_variables())
 
-    evaluator = Evaluator(cmd_args, optimizer, learning_rate, loss, saver)
+    evaluator = Evaluator(cmd_args, config, optimizer, 
+        learning_rate, loss, saver)
     evaluator.run(input_dict)
 
-    fastgradientsign_advgen = FastGradientSign_AdvGen(cmd_args, [1, 28, 28, 1], saver)
+    fastgradientsign_advgen = FastGradientSign_AdvGen(cmd_args, [1, 28, 28, 1], saver, config)
     adv_out_df = fastgradientsign_advgen.run(input_dict)
-    # CHECK IF IMAGE OUTPUT PATH DEFINED THEN OUTPUT IMAGE, IF PICKLE FILE PATH DEFINED THEN SAVE PICKLE?
-    utils.ensure_dir(os.path.dirname(config.pickle_filepath))
-    with open(config.pickle_filepath, "wb") as pkl:
+    # FIXME: CHECK IF IMAGE OUTPUT PATH DEFINED THEN OUTPUT IMAGE, 
+    # IF PICKLE FILE PATH DEFINED THEN SAVE PICKLE?
+    pkl_path = config.get('main', 'pickle_filepath')
+    utils.ensure_dir(os.path.dirname(pkl_path))
+    with open(pkl_path, "wb") as pkl:
         pickle.dump(adv_out_df, pkl)
 
 if __name__ == '__main__':

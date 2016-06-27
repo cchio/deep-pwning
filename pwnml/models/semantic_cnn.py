@@ -1,17 +1,20 @@
 import tensorflow as tf
 
 import utils.utils as utils
-import config.semantic_config as config
 
 class SemanticCNN:
 
-    def __init__(self, 
+    def __init__(self, config,
         sequence_length, vocab_size, embedding_size, num_filters):
+        self.config = config
         self.sequence_length = sequence_length
         self.vocab_size = vocab_size
         self.embedding_size = embedding_size
         self.num_filters = num_filters
-        pass
+        if config.get('main', 'seed') == 'None':
+            self.seed = None
+        else:
+            self.seed = config.getint('main', 'seed')
 
     def conv2d(self, data, weight):
         return tf.nn.conv2d(data,
@@ -30,8 +33,8 @@ class SemanticCNN:
             return tf.Variable(
                 tf.truncated_normal(shape,
                                     stddev=0.1,
-                                    seed=config.seed, 
-                                    dtype=config.data_type))
+                                    seed=self.seed, 
+                                    dtype=tf.float32))
         elif flavor == 'W_random_uniform':
             return tf.Variable(
                 tf.random_uniform(shape,
@@ -39,15 +42,16 @@ class SemanticCNN:
                                   maxval=1.0))
         elif flavor == 'b':
             return tf.Variable(tf.constant(0.1, shape=shape), 
-                               dtype=config.data_type)
+                               dtype=tf.float32)
         else:
             return None
 
     def train_input_placeholders(self):
-        x = tf.placeholder(config.data_type,
+        x = tf.placeholder(tf.float32,
                            shape=[None, self.sequence_length],
                            name="x")
-        y_ = tf.placeholder(config.data_type, [None, config.num_classes], name="y_")
+        y_ = tf.placeholder(tf.float32, 
+            [None, self.config.getint('main', 'num_classes')], name="y_")
         return x, y_
 
     def model(self, data):
@@ -87,9 +91,11 @@ class SemanticCNN:
 
         dropout = tf.nn.dropout(pool_final, keep_prob)
 
-        final_W = tf.get_variable("W", shape=[self.num_filters * 3, config.num_classes],
+        final_W = tf.get_variable("W", shape=[self.num_filters * 3, 
+            self.config.getint('main', 'num_classes')],
             initializer=tf.contrib.layers.xavier_initializer())
-        final_b = tf.Variable(tf.constant(0.1, shape=[config.num_classes]), name="b")
+        final_b = tf.Variable(tf.constant(0.1, 
+            shape=[self.config.getint('main', 'num_classes')]), name="b")
 
         logits = tf.matmul(dropout, final_W) + final_b
         y_conv = tf.nn.softmax(logits)

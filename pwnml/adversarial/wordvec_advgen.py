@@ -9,13 +9,13 @@ import pandas as pd
 import tensorflow as tf
 
 import utils.utils as utils
-import config.semantic_config as config
 
 class WordVec_AdvGen:
 
-    def __init__(self, cmd_args, saver):
+    def __init__(self, cmd_args, saver, config):
         self.cmd_args = cmd_args
         self.saver = saver
+        self.config = config
 
     def run(self, input_dict):
         x = input_dict["x"]
@@ -28,8 +28,11 @@ class WordVec_AdvGen:
         vocab_processor = input_dict["vocab_processor"]
         embed_W = input_dict["embed_W"]
 
-        not_fooled = .0
-        fooled = .0
+        checkpoint_path = self.config.get('main', 'checkpoint_path')
+        eval_frequency = self.config.getint('main', 'eval_frequency')
+        num_classes = self.config.getint('main', 'num_classes')
+
+        num_differs = .0
         correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         cross_entropy = -tf.reduce_sum(tf.cast(y_, "float") * tf.log(y_conv))
@@ -37,18 +40,23 @@ class WordVec_AdvGen:
 
         sess = tf.Session()
         tf.initialize_all_variables().run(session=sess)
-        self.saver.restore(sess, self.cmd_args.checkpoint)
+        self.saver.restore(sess, checkpoint_path)
         embed_W_val = sess.run(embed_W)
         df = pd.DataFrame()
 
         start_time = time.time()
 
-        for idx in xrange(len(test_data)):
-            if idx % config.eval_frequency == 0:
+        if self.cmd_args.test:
+            iter_range = xrange(1)
+        else:
+            iter_range = xrange(len(test_data))
+
+        for idx in iter_range:
+            if idx % eval_frequency == 0:
                 elapsed_time = time.time() - start_time
-                print('Adversarial Text Generation Step %d of %d, (%.1fms/step)' %
+                print('Adversarial text generation step %d of %d, (%.1fms/step)' %
                     (idx, len(test_data),
-                    1000 * elapsed_time / config.eval_frequency))
+                    1000 * elapsed_time / eval_frequency))
 
             x_sample = [test_data[idx]]
             y_sample = [test_labels[idx]]
@@ -56,7 +64,7 @@ class WordVec_AdvGen:
             pred_label = np.argmax(pred)
             correct_label = np.argmax(y_sample)
 
-            target_label = [np.eye(config.num_classes)[np.abs(correct_label-1)]]
+            target_label = [np.eye(num_classes)[np.abs(correct_label-1)]]
             cross_entropy_val = sess.run(cross_entropy, feed_dict={x:x_sample, y_:target_label, keep_prob: 1.0})
 
             # Mess around with gradient

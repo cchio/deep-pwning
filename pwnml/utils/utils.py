@@ -13,33 +13,32 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-# FIXME: DECIDE WHICH CONFIG TO USE BASED ON ARGUMENT? FLAG? 
-# OR JUST MAKE CONFIG AN OBJECT PASSED INTO TO EVALUATOR INIT 
-# import config.mnist_config as config
-import config.semantic_config as config
-
-def maybe_download(filename):
+def maybe_download(config, filename):
     """Download the data from Yann's website, unless it's already here."""
-    if not tf.gfile.Exists(config.work_directory):
-        tf.gfile.MakeDirs(config.work_directory)
-    filepath = os.path.join(config.work_directory, filename)
+    work_directory = config.get('data', 'work_directory')
+    source_url = config.get('data', 'source_url')
+    if not tf.gfile.Exists(work_directory):
+        tf.gfile.MakeDirs(work_directory)
+    filepath = os.path.join(work_directory, filename)
     if not tf.gfile.Exists(filepath):
-        filepath, _ = urllib.request.urlretrieve(config.source_url + filename, filepath)
+        filepath, _ = urllib.request.urlretrieve(source_url + filename, filepath)
         with tf.gfile.GFile(filepath) as f:
             size = f.Size()
         print('Successfully downloaded', filename, size, 'bytes.')
     return filepath
 
-def extract_data(filename, num_images):
+def extract_data(config, filename, num_images):
     """Extract the images into a 4D tensor [image index, y, x, channels].
        Values are rescaled from [0, 255] down to [-0.5, 0.5]."""
     print('Extracting', filename)
+    image_size = config.getint('main', 'image_size')
+    pixel_depth = config.getint('main', 'pixel_depth')
     with gzip.open(filename) as bytestream:
         bytestream.read(16)
-        buf = bytestream.read(config.image_size * config.image_size * num_images)
+        buf = bytestream.read(image_size * image_size * num_images)
         data = np.frombuffer(buf, dtype=np.uint8).astype(np.float32)
-        data = (data - (config.pixel_depth / 2.0)) / config.pixel_depth
-        data = data.reshape(num_images, config.image_size, config.image_size, 1)
+        data = (data - (pixel_depth / 2.0)) / pixel_depth
+        data = data.reshape(num_images, image_size, image_size, 1)
     return data
 
 def extract_labels(filename, num_images):
@@ -50,18 +49,6 @@ def extract_labels(filename, num_images):
         buf = bytestream.read(1 * num_images)
         labels = np.frombuffer(buf, dtype=np.uint8).astype(np.int64)
     return labels
-
-def fake_data(num_images):
-    """Generate a fake dataset that matches the dimensions of MNIST."""
-    data = np.ndarray(
-        shape=(num_images, config.image_size, config.image_size, config.num_channels),
-        dtype=np.float32)
-    labels = np.zeros(shape=(num_images,), dtype=np.int64)
-    for image in xrange(num_images):
-        label = image % 2
-        data[image, :, :, 0] = label - 0.5
-        labels[image] = label
-    return data, labels
 
 def error_rate(predictions, labels, onehot_labels=False):
     """Return the error rate based on dense predictions and sparse labels."""
@@ -113,8 +100,10 @@ def compare_mnist_digits(im1, im2,
         plt.show()
     else:
         if im1_label != im2_label:
-            out_path = '{0}/fooled/{1}/{2}-{3}.png'.format(out_dir, perturbation, method, idx)
+            out_path = '{0}/fooled/{1}/{2}-{3}.png'.format(
+                out_dir, perturbation, method, idx)
         else:
-            out_path = '{0}/not-fooled/{1}/{2}-{3}.png'.format(out_dir, perturbation, method, idx)
+            out_path = '{0}/not-fooled/{1}/{2}-{3}.png'.format(
+                out_dir, perturbation, method, idx)
         fig.savefig(out_path)
         plt.close(fig)

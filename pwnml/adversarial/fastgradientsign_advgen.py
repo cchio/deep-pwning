@@ -9,14 +9,14 @@ import pandas as pd
 import tensorflow as tf
 
 import utils.utils as utils
-import config.mnist_config as config
 
 class FastGradientSign_AdvGen:
 
-    def __init__(self, cmd_args, input_x_shape, saver):
+    def __init__(self, cmd_args, input_x_shape, saver, config):
         self.cmd_args = cmd_args
         self.input_x_shape = input_x_shape
         self.saver = saver
+        self.config = config
 
     def run(self, input_dict):
         x = input_dict["x"]
@@ -25,6 +25,17 @@ class FastGradientSign_AdvGen:
         keep_prob = input_dict["keep_prob"]
         test_data = input_dict["test_data"]
         test_labels = input_dict["test_labels"]
+
+        checkpoint_path = self.config.get('main', 'checkpoint_path')
+        eval_frequency = self.config.getint('main', 'eval_frequency')
+        num_classes = self.config.getint('main', 'num_classes')
+        image_output_path = self.config.get('main', 'image_output_path')
+        adversarial_perturbation_min = self.config.getfloat(
+            'main', 'adversarial_perturbation_min')
+        adversarial_perturbation_max = self.config.getfloat(
+            'main', 'adversarial_perturbation_max')
+        adversarial_perturbation_steps = self.config.getfloat(
+            'main', 'adversarial_perturbation_steps')
 
         not_fooled = .0
         fooled = .0
@@ -35,21 +46,28 @@ class FastGradientSign_AdvGen:
 
         sess = tf.Session()
         tf.initialize_all_variables().run(session=sess)
-        self.saver.restore(sess, self.cmd_args.checkpoint)
+        self.saver.restore(sess, checkpoint_path)
         df = pd.DataFrame()
 
         start_time = time.time()
 
-        for idx in xrange(len(test_data)):
-            if idx % config.eval_frequency == 0:
+        if self.cmd_args.test:
+            iter_range = xrange(1)
+            adversarial_perturbation_max = adversarial_perturbation_min
+            adversarial_perturbation_steps = 1
+        else:
+            iter_range = xrange(len(test_data))
+
+        for idx in iter_range:
+            if idx % eval_frequency == 0:
                 elapsed_time = time.time() - start_time
-                print('Adversarial Image Generation Step %d of %d, (%.1fms/step)' %
+                print('Adversarial image generation step %d of %d, (%.1fms/step)' %
                     (idx, len(test_data),
-                    1000 * elapsed_time / config.eval_frequency))
+                    1000 * elapsed_time / eval_frequency))
 
             image = test_data[idx]
             label = test_labels[idx]
-            y_onehot = np.eye(config.num_classes)[label]
+            y_onehot = np.eye(num_classes)[label]
 
             pred = sess.run(y_conv, feed_dict={x: (np.reshape(image, self.input_x_shape)), keep_prob: 1.0})
             pred_label = np.argmax(pred)
@@ -57,9 +75,9 @@ class FastGradientSign_AdvGen:
             grad_sign = np.sign(grad_val[0])
             grad_norm = sum([np.abs(W) for W in grad_val[0]])
 
-            for perturbation in np.linspace(config.adversarial_perturbation_min, 
-                                            config.adversarial_perturbation_max, 
-                                            config.adversarial_perturbation_steps):
+            for perturbation in np.linspace(adversarial_perturbation_min, 
+                                            adversarial_perturbation_max, 
+                                            adversarial_perturbation_steps):
                 adv_image = perturbation * grad_sign + image
                 adv_pred = sess.run(y_conv, feed_dict={x:adv_image, keep_prob: 1.0})
                 adv_label = np.argmax(adv_pred)
@@ -79,7 +97,7 @@ class FastGradientSign_AdvGen:
                 #     np.reshape(image, [28,28]),
                 #     np.reshape(adv_image, [28,28]),
                 #     label, adv_label, idx, perturbation,
-                #     out_dir=config.image_output_path,
+                #     out_dir=image_output_path,
                 #     method='fast_gradient_sign')
 
         print("Adversarial sample yield: ", fooled/(fooled+not_fooled))
