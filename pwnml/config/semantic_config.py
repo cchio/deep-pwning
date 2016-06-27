@@ -16,8 +16,6 @@ num_epochs = 200
 eval_batch_size = 64
 eval_frequency = 100  # number of steps between evaluations.
 checkpoint_path = 'checkpoints/semantic/prototype.ckpt'
-# image_output_path = 'output/semantic/plot/'
-# pickle_filepath = 'output/semantic/pickle/adversarial-test.pkl'
 data_type = tf.float32
 
 adversarial_perturbation_min = .01

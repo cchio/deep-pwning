@@ -11,10 +11,10 @@ import tensorflow as tf
 import utils.utils as utils
 import config.mnist_config as config
 
-class FGS_AdversarialGenerator:
+class FastGradientSign_AdvGen:
 
-    def __init__(self, FLAGS, input_x_shape, saver):
-        self.FLAGS = FLAGS
+    def __init__(self, cmd_args, input_x_shape, saver):
+        self.cmd_args = cmd_args
         self.input_x_shape = input_x_shape
         self.saver = saver
 
@@ -35,7 +35,7 @@ class FGS_AdversarialGenerator:
 
         sess = tf.Session()
         tf.initialize_all_variables().run(session=sess)
-        self.saver.restore(sess, self.FLAGS.checkpoint)
+        self.saver.restore(sess, self.cmd_args.checkpoint)
         df = pd.DataFrame()
 
         start_time = time.time()
@@ -67,7 +67,6 @@ class FGS_AdversarialGenerator:
                 if (adv_label != label): fooled = fooled + 1
                 else: not_fooled = not_fooled + 1
 
-                # JUST EXPORT ADV_IMG AS A VECTOR, THEN 
                 series = pd.Series([idx, label, pred_label, adv_label, grad_norm, pred, adv_pred, image, adv_image, 
                             perturbation, grad_val],
                             index = ["Idx", "True Label", "Predicted Label", "Predicted Label Adverserial", \
@@ -75,7 +74,7 @@ class FGS_AdversarialGenerator:
                                     "Adverserial Image", "Gradient Step", "Gradient"])
                 df = df.append(series, ignore_index=True)
 
-                # THIS IS NOT GENERAL --- EXTRACT OUT!!!
+                # FIXME: THIS IS NOT GENERAL --- EXTRACT OUT
                 # utils.compare_mnist_digits(
                 #     np.reshape(image, [28,28]),
                 #     np.reshape(adv_image, [28,28]),

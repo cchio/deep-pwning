@@ -97,15 +97,3 @@ class SemanticCNN:
         l2_loss += tf.nn.l2_loss(final_W) + tf.nn.l2_loss(final_b)
 
         return y_conv, logits, keep_prob, l2_loss, embedded_words, embed_W
-
-        # param_dict = {
-        #     'conv1_W': conv1_W,
-        #     'conv1_b': conv1_b,
-        #     'conv2_W': conv2_W,
-        #     'conv2_b': conv2_b,
-        #     'fc1_W': fc1_W,
-        #     'fc1_b': fc1_b,
-        #     'fc2_W': fc2_W,
-        #     'fc2_b': fc2_b
-        # }
-        # return y_conv, logits, keep_prob, param_dict

@@ -1,9 +1,3 @@
-"""Simple, end-to-end, LeNet-5-like convolutional MNIST model example.
-
-This should achieve a test error of 0.7%. Please keep this model as simple and
-linear as possible, it is meant as a tutorial for simple convolutional models.
-Run with --self_test on the command line to execute a short self-test.
-"""
 from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
@@ -24,41 +18,34 @@ import utils.utils as utils
 from models.lenet5 import LeNet5
 from evaluator import Evaluator
 import config.mnist_config as config
-from adversarial.fast_gradient_sign import FGS_AdversarialGenerator
+from adversarial.fastgradientsign_advgen import FastGradientSign_AdvGen
 
-tf.app.flags.DEFINE_boolean("self_test", False, "True if running a self test.")
 tf.app.flags.DEFINE_string('checkpoint', '', 'Tensorflow session checkpoint file path.')
-FLAGS = tf.app.flags.FLAGS
+cmd_args = tf.app.flags.cmd_args
 
 def main(argv=None):
 
-    if FLAGS.checkpoint:
-        print('Loading model checkpoint from: ', FLAGS.checkpoint)
-    if FLAGS.self_test:
-        print('Running self-test.')
-        train_data, train_labels = fake_data(256)
-        validation_data, validation_labels = fake_data(config.batch_size)
-        test_data, test_labels = fake_data(config.batch_size)
-        num_epochs = 1
-    else:
-        # Get the data.
-        train_data_filename = utils.maybe_download(config.train_data_filename)
-        train_labels_filename = utils.maybe_download(config.train_labels_filename)
-        test_data_filename = utils.maybe_download(config.test_data_filename)
-        test_labels_filename = utils.maybe_download(config.test_labels_filename)
+    if cmd_args.checkpoint:
+        print('Loading model checkpoint from: ', cmd_args.checkpoint)
 
-        # Extract it into np arrays.
-        train_data = utils.extract_data(train_data_filename, 60000)
-        train_labels = utils.extract_labels(train_labels_filename, 60000)
-        test_data = utils.extract_data(test_data_filename, 10000)
-        test_labels = utils.extract_labels(test_labels_filename, 10000)
+    # Get the data.
+    train_data_filename = utils.maybe_download(config.train_data_filename)
+    train_labels_filename = utils.maybe_download(config.train_labels_filename)
+    test_data_filename = utils.maybe_download(config.test_data_filename)
+    test_labels_filename = utils.maybe_download(config.test_labels_filename)
 
-        # Generate a validation set.
-        validation_data = train_data[:config.validation_size, ...]
-        validation_labels = train_labels[:config.validation_size]
-        train_data = train_data[config.validation_size:, ...]
-        train_labels = train_labels[config.validation_size:]
-        num_epochs = config.num_epochs
+    # Extract it into np arrays.
+    train_data = utils.extract_data(train_data_filename, 60000)
+    train_labels = utils.extract_labels(train_labels_filename, 60000)
+    test_data = utils.extract_data(test_data_filename, 10000)
+    test_labels = utils.extract_labels(test_labels_filename, 10000)
+
+    # Generate a validation set.
+    validation_data = train_data[:config.validation_size, ...]
+    validation_labels = train_labels[:config.validation_size]
+    train_data = train_data[config.validation_size:, ...]
+    train_labels = train_labels[config.validation_size:]
+    num_epochs = config.num_epochs
     train_size = train_labels.shape[0]
 
     lenet5 = LeNet5()
@@ -109,15 +96,15 @@ def main(argv=None):
 
     saver = tf.train.Saver(tf.all_variables())
 
-    evaluator = Evaluator(FLAGS, optimizer, learning_rate, loss, saver)
+    evaluator = Evaluator(cmd_args, optimizer, learning_rate, loss, saver)
     evaluator.run(input_dict)
 
-    fgs_adversarial_generator = FGS_AdversarialGenerator(FLAGS, [1, 28, 28, 1], saver)
-    adversarial_output_df = fgs_adversarial_generator.run(input_dict)
+    fastgradientsign_advgen = FastGradientSign_AdvGen(cmd_args, [1, 28, 28, 1], saver)
+    adv_out_df = fastgradientsign_advgen.run(input_dict)
     # CHECK IF IMAGE OUTPUT PATH DEFINED THEN OUTPUT IMAGE, IF PICKLE FILE PATH DEFINED THEN SAVE PICKLE?
     utils.ensure_dir(os.path.dirname(config.pickle_filepath))
     with open(config.pickle_filepath, "wb") as pkl:
-        pickle.dump(adversarial_output_df, pkl)
+        pickle.dump(adv_out_df, pkl)
 
 if __name__ == '__main__':
     tf.app.run()

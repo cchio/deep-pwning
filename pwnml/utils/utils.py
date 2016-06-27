@@ -13,7 +13,10 @@ import numpy as np
 import tensorflow as tf
 import matplotlib.pyplot as plt
 
-import config.mnist_config as config
+# FIXME: DECIDE WHICH CONFIG TO USE BASED ON ARGUMENT? FLAG? 
+# OR JUST MAKE CONFIG AN OBJECT PASSED INTO TO EVALUATOR INIT 
+# import config.mnist_config as config
+import config.semantic_config as config
 
 def maybe_download(filename):
     """Download the data from Yann's website, unless it's already here."""
@@ -60,11 +63,15 @@ def fake_data(num_images):
         labels[image] = label
     return data, labels
 
-def error_rate(predictions, labels):
+def error_rate(predictions, labels, onehot_labels=False):
     """Return the error rate based on dense predictions and sparse labels."""
+    if onehot_labels:
+        norm_labels = np.argmax(labels, axis=1)
+    else:
+        norm_labels = labels
     return 100.0 - (
         100.0 *
-        np.sum(np.argmax(predictions, 1) == labels) /
+        np.sum(np.argmax(predictions, 1) == norm_labels) /
         predictions.shape[0])
 
 def ensure_dir(d):
@@ -72,6 +79,17 @@ def ensure_dir(d):
         return
     else:
         os.makedirs(d)
+
+# http://stackoverflow.com/questions/20038011/trying-to-find-majority-element-in-a-list
+def find_majority(k):
+    m = {}
+    max_val = ('', 0) # (occurring element, occurrences)
+    for n in k:
+        if n in m: m[n] += 1
+        else: m[n] = 1
+        if m[n] > max_val[1]: max_val = (n,m[n])
+    return max_val[0]
+
 
 def compare_mnist_digits(im1, im2, 
     im1_label, im2_label, idx, perturbation=.0, out_dir='', method=''):

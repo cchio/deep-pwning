@@ -18,11 +18,12 @@ import config.semantic_config as config
 class Evaluator:
 
     def __init__(self, 
-        FLAGS, optimizer, learning_rate, loss, saver):
-        self.FLAGS = FLAGS
+        cmd_args, optimizer, learning_rate, loss, saver, onehot_labels=False):
+        self.cmd_args = cmd_args
         self.optimizer = optimizer
         self.learning_rate = learning_rate
         self.loss = loss
+        self.onehot_labels = onehot_labels
         self.saver = saver
 
     def eval_in_batches(self, y_conv, x, keep_prob, data, sess):
@@ -51,8 +52,8 @@ class Evaluator:
         keep_prob = input_dict["keep_prob"]
         train_data = input_dict["train_data"]
         train_labels = input_dict["train_labels"]
-        # test_data = input_dict["test_data"]
-        # test_labels = input_dict["test_labels"]
+        test_data = input_dict["test_data"]
+        test_labels = input_dict["test_labels"]
         validation_data = input_dict["validation_data"]
         validation_labels = input_dict["validation_labels"]
         num_epochs = input_dict["num_epochs"]
@@ -66,13 +67,14 @@ class Evaluator:
             tf.initialize_all_variables().run()
             print('Initialized!')
 
-            if not self.FLAGS.checkpoint:
+            if not self.cmd_args.checkpoint:
                 print('No checkpoint to load, training model from scratch...')
 
                 for step in xrange(int(num_epochs * train_size) // config.batch_size):
                     offset = (step * config.batch_size) % (train_size - config.batch_size)
                     batch_data = train_data[offset:(offset + config.batch_size), ...]
                     batch_labels = train_labels[offset:(offset + config.batch_size)]
+
                     feed_dict = {
                         x: batch_data, 
                         y_: batch_labels,
@@ -81,6 +83,7 @@ class Evaluator:
 
                     _, l, lr, predictions = sess.run(
                         [self.optimizer, self.loss, self.learning_rate, y_conv], feed_dict=feed_dict)
+
                     if step % config.eval_frequency == 0:
                         path = self.saver.save(sess, config.checkpoint_path)
                         print("Saved model checkpoint to {}\n".format(path))
@@ -90,14 +93,11 @@ class Evaluator:
                             (step, float(step) * config.batch_size / train_size,
                             1000 * elapsed_time / config.eval_frequency))
                         print('Minibatch loss: %.3f, learning rate: %.6f' % (l, lr))
-                        print('Minibatch error: %.1f%%' % utils.error_rate(predictions, batch_labels))
+                        print('Minibatch error: %.1f%%' % utils.error_rate(predictions, batch_labels, self.onehot_labels))
                         print('Validation error: %.1f%%' % utils.error_rate(
-                            self.eval_in_batches(y_conv, x, keep_prob, validation_data, sess), validation_labels))
+                            self.eval_in_batches(y_conv, x, keep_prob, validation_data, sess), validation_labels, self.onehot_labels))
                         sys.stdout.flush()
         
                 # Finally print the result!
-                test_error = utils.error_rate(self.eval_in_batches(y_conv, x, keep_prob, test_data, sess), test_labels)
+                test_error = utils.error_rate(self.eval_in_batches(y_conv, x, keep_prob, test_data, sess), test_labels, self.onehot_labels)
                 print('Test error: %.1f%%' % test_error)
-                if self.FLAGS.self_test:
-                    print('test_error', test_error)
-                    assert test_error == 0.0, 'expected 0.0 test_error, got %.2f' % (test_error,)
