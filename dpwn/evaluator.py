@@ -113,12 +113,12 @@ class Evaluator:
                                                  num_classes), validation_labels, self.onehot_labels))
                         sys.stdout.flush()
         
-                # Finally print the result!
-                test_error = utils.error_rate(self.eval_in_batches(y_conv, 
-                                                                   x, 
-                                                                   keep_prob, 
-                                                                   test_data, 
-                                                                   sess,
-                                                                   batch_size,
-                                                                   num_classes), test_labels, self.onehot_labels)
-                print('Test error: %.1f%%' % test_error)
+            # Finally print the result!
+            test_error = utils.error_rate(self.eval_in_batches(y_conv, 
+                                                               x, 
+                                                               keep_prob, 
+                                                               test_data, 
+                                                               sess,
+                                                               batch_size,
+                                                               num_classes), test_labels, self.onehot_labels)
+            print('Test error: %.1f%%' % test_error)

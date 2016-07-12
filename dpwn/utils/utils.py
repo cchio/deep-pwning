@@ -77,7 +77,6 @@ def find_majority(k):
         if m[n] > max_val[1]: max_val = (n,m[n])
     return max_val[0]
 
-
 def compare_mnist_digits(im1, im2, 
     im1_label, im2_label, idx, perturbation=.0, out_dir='', method=''):
     """ Plot 2 MNIST images side by side."""
