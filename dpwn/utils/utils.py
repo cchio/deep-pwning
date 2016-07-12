@@ -11,6 +11,9 @@ from six.moves import xrange
 
 import numpy as np
 import tensorflow as tf
+import matplotlib
+# Circumvent error when X11 forwarding is not available
+if 'DISPLAY' not in os.environ: matplotlib.use('Pdf')
 import matplotlib.pyplot as plt
 
 def maybe_download(config, filename):

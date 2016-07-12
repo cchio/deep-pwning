@@ -13,7 +13,6 @@ import numpy as np
 from six.moves import urllib
 from six.moves import xrange
 import tensorflow as tf
-import matplotlib.pyplot as plt
 
 import utils.utils as utils
 from models.lenet5 import LeNet5

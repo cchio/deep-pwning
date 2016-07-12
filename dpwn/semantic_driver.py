@@ -15,7 +15,6 @@ from six.moves import urllib
 from six.moves import xrange
 import tensorflow as tf
 from tensorflow.contrib import learn
-import matplotlib.pyplot as plt
 
 import utils.utils as utils
 from models.semantic_cnn import SemanticCNN
