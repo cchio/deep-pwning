@@ -5,6 +5,7 @@ from __future__ import print_function
 import os
 import errno
 import gzip
+import random
 
 from six.moves import urllib
 from six.moves import xrange
@@ -15,6 +16,13 @@ import matplotlib
 # Circumvent error when X11 forwarding is not available
 if 'DISPLAY' not in os.environ: matplotlib.use('Pdf')
 import matplotlib.pyplot as plt
+
+def random_string(n):
+    """Generates a random alphanumeric (lower case only) string of length n."""
+    if n < 0:
+        return ''
+    return ''.join(random.choice('0123456789abcdefghijklmnopqrstuvwxyz') 
+        for i in range(n))
 
 def maybe_download(config, filename):
     """Download the data from Yann's website, unless it's already here."""

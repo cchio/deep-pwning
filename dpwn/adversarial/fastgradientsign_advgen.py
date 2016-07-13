@@ -87,9 +87,9 @@ class FastGradientSign_AdvGen:
 
                 series = pd.Series([idx, label, pred_label, adv_label, grad_norm, pred, adv_pred, image, adv_image, 
                             perturbation, grad_val],
-                            index = ["Idx", "True Label", "Predicted Label", "Predicted Label Adverserial", \
-                                    "Gradient Norm", "Predicted Prob", "Predicted Prob Adverserial", "Image", \
-                                    "Adverserial Image", "Gradient Step", "Gradient"])
+                            index = ["Idx", "True Label", "Predicted Label", "Predicted Label Adversarial", \
+                                    "Gradient Norm", "Predicted Prob", "Predicted Prob Adversarial", "Image", \
+                                    "Adversarial Image", "Gradient Step", "Gradient"])
                 df = df.append(series, ignore_index=True)
 
                 # FIXME: THIS IS NOT GENERAL --- EXTRACT OUT
