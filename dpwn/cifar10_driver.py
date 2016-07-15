@@ -115,6 +115,10 @@ def evaluate(config, cifar10_cnn, input_dict):
         #     * tf.log(tf.cast(logits, "float")))
 
         # cross_entropy = -tf.reduce_sum(y_*tf.log(tf.clip_by_value(logits,1e-10,1.0)))
+
+        # FIXME: Verify that this corss entropy is correct - (probably not)
+        #        "labels: Each row labels[i] must be a valid probability distribution or all zeros. If 
+        #        all zeros, the corresponding loss will be 0, regardless of the contents of logits[i]."
         cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, y_)
         grad = tf.gradients(cross_entropy, images)
 
@@ -143,11 +147,15 @@ def evaluate(config, cifar10_cnn, input_dict):
                 total_sample_count = num_iter * int(config.get('main', 'batch_size'))
                 step = 0
                 while step < num_iter and not coord.should_stop():
-                    predictions, cross_entropy_val = sess.run([top_k_op, cross_entropy])
+                    print(type(cross_entropy))
+                    print(type(images))
+                    predictions, grad_val, cross_entropy_val = sess.run([top_k_op, grad, cross_entropy])
                     true_count += np.sum(predictions)
                     step += 1
                     print("CROSS_ENTROPY")
                     print(cross_entropy_val)
+                    print("GRAD_VAL")
+                    print(grad_val)
 
                 # Compute precision @ 1.
                 precision = true_count / total_sample_count
