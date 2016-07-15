@@ -1,0 +1,6 @@
+model_checkpoint_path: "/Users/cchio/Downloads/cifar10_train/model.ckpt-999999"
+all_model_checkpoint_paths: "/Users/cchio/Downloads/cifar10_train/model.ckpt-996000"
+all_model_checkpoint_paths: "/Users/cchio/Downloads/cifar10_train/model.ckpt-997000"
+all_model_checkpoint_paths: "/Users/cchio/Downloads/cifar10_train/model.ckpt-998000"
+all_model_checkpoint_paths: "/Users/cchio/Downloads/cifar10_train/model.ckpt-999000"
+all_model_checkpoint_paths: "/Users/cchio/Downloads/cifar10_train/model.ckpt-999999"

@@ -141,22 +141,30 @@ def read_cifar10(config, filename_queue):
     result.uint8image = tf.transpose(depth_major, [1, 2, 0])
     return result
 
-def cifar10_distorted_inputs(config):
-    """Construct distorted input for CIFAR training using the Reader ops.
+def cifar10_inputs(config, distort=False, for_eval=False, shuffle=False):
+    """Construct input for CIFAR evaluation using the Reader ops.
+
+    Args:
+        eval_data: bool, indicating if one should use the train or eval data set.
 
     Returns:
-    images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
-    labels: Labels. 1D tensor of [batch_size] size.
+        images: Images. 4D tensor of [batch_size, IMAGE_SIZE, IMAGE_SIZE, 3] size.
+        labels: Labels. 1D tensor of [batch_size] size.
 
     Raises:
-    ValueError: If no data_dir
+        ValueError: If no data_dir
     """
-    work_directory = config.get('data', 'work_directory')
 
-    if not work_directory:
-        raise ValueError('Please supply a work_directory')
-    data_dir = os.path.join(work_directory, 'cifar-10-batches-bin')
-    filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i) for i in xrange(1, 6)]
+    data_dir = os.path.join(config.get('data', 'work_directory'), 'cifar-10-batches-bin')
+    batch_size = int(config.get('main', 'batch_size'))
+
+    if not for_eval:
+        filenames = [os.path.join(data_dir, 'data_batch_%d.bin' % i) for i in xrange(1, 6)]
+        num_examples_per_epoch = int(config.get('main', 'num_examples_per_epoch_train'))
+    else:
+        filenames = [os.path.join(data_dir, 'test_batch.bin')]
+        num_examples_per_epoch = int(config.get('main', 'num_examples_per_epoch_eval'))
+
     for f in filenames:
         if not tf.gfile.Exists(f):
             raise ValueError('Failed to find file: ' + f)
@@ -172,38 +180,46 @@ def cifar10_distorted_inputs(config):
     width = int(config.get('main', 'subsection_image_size'))
     num_channels = int(config.get('main', 'num_channels'))
 
-    # Image processing for training the network. Note the many random
-    # distortions applied to the image.
+    # Image processing for evaluation.
+    # Crop the central [height, width] of the image.
+    resized_image = tf.image.resize_image_with_crop_or_pad(reshaped_image,
+                                                           width, height)
 
-    # Randomly crop a [height, width] section of the image.
-    distorted_image = tf.random_crop(reshaped_image, [height, width, num_channels])
+    if distort:
+        # Image processing for training the network. Note the many random
+        # distortions applied to the image.
 
-    # Randomly flip the image horizontally.
-    distorted_image = tf.image.random_flip_left_right(distorted_image)
+        # Randomly crop a [height, width] section of the image.
+        distorted_image = tf.random_crop(reshaped_image, [height, width, num_channels])
 
-    # Because these operations are not commutative, consider randomizing
-    # the order their operation.
-    distorted_image = tf.image.random_brightness(distorted_image,
-                                                 max_delta=63)
-    distorted_image = tf.image.random_contrast(distorted_image,
-                                               lower=0.2, 
-                                               upper=1.8)
+        # Randomly flip the image horizontally.
+        distorted_image = tf.image.random_flip_left_right(distorted_image)
 
-    # Subtract off the mean and divide by the variance of the pixels.
-    float_image = tf.image.per_image_whitening(distorted_image)
+        # Because these operations are not commutative, consider randomizing
+        # the order their operation.
+        distorted_image = tf.image.random_brightness(distorted_image,
+                                                     max_delta=63)
+        resulting_image = tf.image.random_contrast(distorted_image,
+                                                   lower=0.2, 
+                                                   upper=1.8)
+    else:
+        resulting_image = resized_image
+
+    float_image = tf.image.per_image_whitening(resulting_image)
 
     # Ensure that the random shuffling has good mixing properties.
-    min_queue_examples = int(config.get('main', 'num_examples_per_epoch_train')) * \
-                           float(config.get('main', 'min_fraction_of_examples_in_queue'))
-    print ('Filling queue with %d CIFAR images before starting to train. '
+    min_queue_examples = num_examples_per_epoch * \
+        float(config.get('main', 'min_fraction_of_examples_in_queue'))
+
+    if not for_eval:
+        print ('Filling queue with %d CIFAR images before starting to train. '
            'This will take a few minutes.' % min_queue_examples)
 
     # Generate a batch of images and labels by building up a queue of examples.
     return _generate_image_and_label_batch(float_image, read_input.label,
                                          min_queue_examples, 
                                          int(config.get('main', 'batch_size')),
-                                         shuffle=True)
-    return images, labels
+                                         shuffle=shuffle)
 
 def extract_data(config, filename, num_images):
     """Extract the images into a 4D tensor [image index, y, x, channels].
