@@ -58,10 +58,10 @@ class Cifar10CNN:
             tf.add_to_collection('losses', weight_decay)
         return var
 
-    def model(self, images):
+    def model(self, images, eval=False):
         num_classes = int(self.config.get('main', 'num_classes'))
 
-        with tf.variable_scope('conv1') as scope:
+        with tf.variable_scope('conv1', reuse=eval) as scope:
             kernel = self.variable_with_weight_decay('weights',
                                                      shape=[5, 5, 3, 64],
                                                      stddev=5e-2,
@@ -79,7 +79,7 @@ class Cifar10CNN:
         norm1 = tf.nn.lrn(pool1, 4, bias=1.0, 
                           alpha=0.001 / 9.0, beta=0.75, name='norm1')
 
-        with tf.variable_scope('conv2') as scope:
+        with tf.variable_scope('conv2', reuse=eval) as scope:
             kernel = self.variable_with_weight_decay('weights',
                                                  shape=[5, 5, 64, 64],
                                                  stddev=5e-2,
@@ -98,7 +98,7 @@ class Cifar10CNN:
                                padding='SAME', name='pool2')
 
         # local3
-        with tf.variable_scope('local3') as scope:
+        with tf.variable_scope('local3', reuse=eval) as scope:
             # Move everything into depth so we can perform a single matrix multiply.
             reshape = tf.reshape(pool2, 
                 [int(self.config.get('main', 'batch_size')), -1])
@@ -109,14 +109,14 @@ class Cifar10CNN:
             local3 = tf.nn.relu(tf.matmul(reshape, weights) + biases, name=scope.name)
 
         # local4
-        with tf.variable_scope('local4') as scope:
+        with tf.variable_scope('local4', reuse=eval) as scope:
             weights = self.variable_with_weight_decay('weights', shape=[384, 192],
                                                   stddev=0.04, wd=0.004)
             biases = self.variable_on_cpu('biases', [192], tf.constant_initializer(0.1))
             local4 = tf.nn.relu(tf.matmul(local3, weights) + biases, name=scope.name)
 
         # softmax, i.e. softmax(WX + b)
-        with tf.variable_scope('softmax_linear') as scope:
+        with tf.variable_scope('softmax_linear', reuse=eval) as scope:
             weights = self.variable_with_weight_decay('weights', [192, num_classes],
                                                   stddev=1/192.0, wd=0.0)
             biases = self.variable_on_cpu('biases', [num_classes],

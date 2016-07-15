@@ -39,7 +39,7 @@ class FastGradientSign_AdvGen:
 
         not_fooled = .0
         fooled = .0
-        correct_prediction = tf.equal(tf.argmax(y_conv,1), tf.argmax(y_,1))
+        correct_prediction = tf.equal(tf.argmax(y_conv, 1), tf.argmax(y_, 1))
         accuracy = tf.reduce_mean(tf.cast(correct_prediction, "float"))
         cross_entropy = -tf.reduce_sum(tf.cast(y_, "float") * tf.log(y_conv))
         grad = tf.gradients(cross_entropy, x)
@@ -91,14 +91,6 @@ class FastGradientSign_AdvGen:
                                     "Gradient Norm", "Predicted Prob", "Predicted Prob Adversarial", "Image", \
                                     "Adversarial Image", "Gradient Step", "Gradient"])
                 df = df.append(series, ignore_index=True)
-
-                # FIXME: THIS IS NOT GENERAL --- EXTRACT OUT
-                # utils.compare_mnist_digits(
-                #     np.reshape(image, [28,28]),
-                #     np.reshape(adv_image, [28,28]),
-                #     label, adv_label, idx, perturbation,
-                #     out_dir=image_output_path,
-                #     method='fast_gradient_sign')
 
         print("Adversarial sample yield: ", fooled/(fooled+not_fooled))
         print("Adversarial samples fooled: ", fooled)
