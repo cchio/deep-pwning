@@ -16,6 +16,8 @@ from six.moves import urllib
 from six.moves import xrange
 import tensorflow as tf
 
+import matplotlib.pyplot as plt
+
 import utils.utils as utils
 from models.cifar10_cnn import Cifar10CNN
 from evaluator import Evaluator
@@ -102,21 +104,13 @@ def evaluate(config, cifar10_cnn, input_dict):
         del variables_to_restore['Variable']
         saver = tf.train.Saver(variables_to_restore)
 
-        # pred_labels = tf.argmax(logits, 1)
-        # print(tf.cast(labels, "int64"))
-        y_ = tf.one_hot(indices=tf.cast(labels, "int64"), 
-            depth=int(config.get('main', 'num_classes')), 
-            on_value=1.0, 
-            off_value=0.0)
+        # y_ = tf.one_hot(indices=tf.cast(labels, "int64"), 
+        #     depth=int(config.get('main', 'num_classes')), 
+        #     on_value=1.0, 
+        #     off_value=0.0)
 
-        # cross_entropy = -tf.reduce_sum(tf.cast(labels, "float") 
-        #     * tf.log(tf.cast(pred_labels, "float")))
-        # cross_entropy = -tf.reduce_sum(tf.cast(y_, "float") 
-        #     * tf.log(tf.cast(logits, "float")))
-
-        # cross_entropy = -tf.reduce_sum(y_*tf.log(tf.clip_by_value(logits,1e-10,1.0)))
-        cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, y_)
-        grad = tf.gradients(cross_entropy, images)
+        # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, y_)
+        # grad = tf.gradients(cross_entropy, images)
 
         with tf.Session() as sess:
             ckpt = tf.train.get_checkpoint_state(config.get('main', 'checkpoint_dir'))
@@ -143,34 +137,19 @@ def evaluate(config, cifar10_cnn, input_dict):
                 total_sample_count = num_iter * int(config.get('main', 'batch_size'))
                 step = 0
                 while step < num_iter and not coord.should_stop():
-                    predictions, cross_entropy_val = sess.run([top_k_op, cross_entropy])
+                    # predictions, cross_entropy_val = sess.run([top_k_op, cross_entropy])
+                    predictions = sess.run([top_k_op])
+                    # for image in images:
+                    #     print(image.shape)
+                    #     plt.imshow(image)
+                    #     plt.show()
                     true_count += np.sum(predictions)
                     step += 1
-                    print("CROSS_ENTROPY")
-                    print(cross_entropy_val)
+                    # print(cross_entropy_val)
 
                 # Compute precision @ 1.
                 precision = true_count / total_sample_count
                 print('%s: precision @ 1 = %.3f' % (datetime.now(), precision))
-
-                # print("\nLABELS")
-                # print(labels)
-                # print(sess.run(labels, y_))
-
-                # print("\nY_")
-                # print(y_)
-                # print(sess.run(y_))
-
-                # print("\PRED LABELS")
-                # print(pred_labels)
-                # print(sess.run(pred_labels))
-
-                # labels_val, y_val = sess.run([labels, y_])
-                # print(labels_val)
-                # print(y_val)
-
-                # print("\nCROSS ENTROPY")
-                # print(sess.run(cross_entropy))
 
             except Exception as e:
                 coord.request_stop(e)
@@ -245,23 +224,34 @@ def main(argv=None):
             print('Skipping training phase, loading model checkpoint from:', 
                 config.get('main', 'checkpoint_dir'))
     
+
+        x = tf.placeholder(tf.float32,
+                           shape=[None,
+                                  config.getint('main', 'subsection_image_size'),
+                                  config.getint('main', 'subsection_image_size'),
+                                  config.getint('main', 'num_channels')],
+                           name="x")
+        images_raw, _ = utils.cifar10_inputs(config, whiten=False, for_eval=True)
         images_eval, labels_eval = utils.cifar10_inputs(config, for_eval=True)
         logits_eval = cifar10_cnn.model(images_eval, eval=True)
+        logits_single = cifar10_cnn.model(images_eval, eval=True, image_placeholder=x)
 
     input_dict = {
         "graph": g,
+        "x_raw": images_raw,
         "x": images_eval,
         "y_": labels_eval,
         "y_conv": logits_eval,
+        "y_conv_single": logits_single,
+        "adv_image_placeholder": x,
         "keep_prob": None,
-        # "test_data": test_data,
-        # "test_labels": test_labels
     }
 
     evaluate(config, cifar10_cnn, input_dict)
 
-    # fastgradientsign_advgen = FastGradientSign_AdvGen(cmd_args, [1, 32, 32, 3], saver, config)
-    # adv_out_df = fastgradientsign_advgen.run(input_dict)
+    print("Starting generation of adversarial examples for CIFAR-10...")
+    fastgradientsign_advgen = FastGradientSign_AdvGen(cmd_args, [1, 24, 24, 3], saver, config)
+    fastgradientsign_advgen.run_queue(input_dict)
 
 if __name__ == '__main__':
     tf.app.run()

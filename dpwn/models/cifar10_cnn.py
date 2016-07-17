@@ -58,15 +58,22 @@ class Cifar10CNN:
             tf.add_to_collection('losses', weight_decay)
         return var
 
-    def model(self, images, eval=False):
+    def model(self, images, eval=False, image_placeholder=None):
         num_classes = int(self.config.get('main', 'num_classes'))
+        image_size = int(self.config.get('main', 'subsection_image_size'))
+        num_channels = int(self.config.get('main', 'num_channels'))
 
         with tf.variable_scope('conv1', reuse=eval) as scope:
             kernel = self.variable_with_weight_decay('weights',
                                                      shape=[5, 5, 3, 64],
                                                      stddev=5e-2,
                                                      wd=0.0)
-            conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
+            if image_placeholder is None:
+                conv = tf.nn.conv2d(images, kernel, [1, 1, 1, 1], padding='SAME')
+            else:
+                whitened_image = tf.image.per_image_whitening(tf.reshape(image_placeholder, [image_size, image_size, num_channels]))
+                whitened_image_reshaped = tf.reshape(whitened_image, [1, image_size, image_size, num_channels])
+                conv = tf.nn.conv2d(whitened_image_reshaped, kernel, [1, 1, 1, 1], padding='SAME')
             biases = self.variable_on_cpu('biases', [64], tf.constant_initializer(0.0))
             bias = tf.nn.bias_add(conv, biases)
             conv1 = tf.nn.relu(bias, name=scope.name)
@@ -100,8 +107,11 @@ class Cifar10CNN:
         # local3
         with tf.variable_scope('local3', reuse=eval) as scope:
             # Move everything into depth so we can perform a single matrix multiply.
-            reshape = tf.reshape(pool2, 
-                [int(self.config.get('main', 'batch_size')), -1])
+            if image_placeholder is None:
+                reshape = tf.reshape(pool2, 
+                    [int(self.config.get('main', 'batch_size')), -1])
+            else:
+                reshape = tf.reshape(pool2, [1, -1])
             dim = reshape.get_shape()[1].value
             weights = self.variable_with_weight_decay('weights', shape=[dim, 384],
                                                   stddev=0.04, wd=0.004)

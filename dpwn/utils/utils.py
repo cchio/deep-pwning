@@ -141,7 +141,7 @@ def read_cifar10(config, filename_queue):
     result.uint8image = tf.transpose(depth_major, [1, 2, 0])
     return result
 
-def cifar10_inputs(config, distort=False, for_eval=False, shuffle=False):
+def cifar10_inputs(config, distort=False, whiten=True, for_eval=False, shuffle=False):
     """Construct input for CIFAR evaluation using the Reader ops.
 
     Args:
@@ -205,7 +205,10 @@ def cifar10_inputs(config, distort=False, for_eval=False, shuffle=False):
     else:
         resulting_image = resized_image
 
-    float_image = tf.image.per_image_whitening(resulting_image)
+    if whiten:
+        float_image = tf.image.per_image_whitening(resulting_image)
+    else:
+        float_image = resulting_image
 
     # Ensure that the random shuffling has good mixing properties.
     min_queue_examples = num_examples_per_epoch * \
@@ -218,7 +221,7 @@ def cifar10_inputs(config, distort=False, for_eval=False, shuffle=False):
     # Generate a batch of images and labels by building up a queue of examples.
     return _generate_image_and_label_batch(float_image, read_input.label,
                                          min_queue_examples, 
-                                         int(config.get('main', 'batch_size')),
+                                         batch_size,
                                          shuffle=shuffle)
 
 def extract_data(config, filename, num_images):

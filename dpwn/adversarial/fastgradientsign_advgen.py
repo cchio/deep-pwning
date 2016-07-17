@@ -17,6 +17,7 @@ class FastGradientSign_AdvGen:
         self.input_x_shape = input_x_shape
         self.saver = saver
         self.config = config
+        self.config = config
 
     def run(self, input_dict):
         x = input_dict["x"]
@@ -96,3 +97,107 @@ class FastGradientSign_AdvGen:
         print("Adversarial samples fooled: ", fooled)
         print("Adversarial samples not fooled: ", not_fooled)
         return df
+
+    def run_queue(self, input_dict):
+        graph = input_dict["graph"]
+        images = input_dict["x"]
+        raw_images = input_dict["x_raw"]
+        labels = input_dict["y_"]
+        logits = input_dict["y_conv"]
+        logits_single = input_dict["y_conv_single"]
+        x = input_dict["adv_image_placeholder"]
+
+        adversarial_perturbation_min = self.config.getfloat(
+            'main', 'adversarial_perturbation_min')
+        adversarial_perturbation_max = self.config.getfloat(
+            'main', 'adversarial_perturbation_max')
+        adversarial_perturbation_steps = self.config.getfloat(
+            'main', 'adversarial_perturbation_steps')
+
+        with graph.as_default():
+            # Restore the moving average version of the learned variables for eval.
+            variable_averages = tf.train.ExponentialMovingAverage(
+                float(self.config.get('main', 'moving_average_decay')))
+            variables_to_restore = variable_averages.variables_to_restore()
+            del variables_to_restore['Variable']
+            saver = tf.train.Saver(variables_to_restore)
+
+            y_ = tf.one_hot(indices=tf.cast(labels, "int64"), 
+                depth=int(self.config.get('main', 'num_classes')), 
+                on_value=1.0, 
+                off_value=0.0)
+
+            cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, y_)
+            grad = tf.gradients(cross_entropy, images)
+
+            with tf.Session() as sess:
+                ckpt = tf.train.get_checkpoint_state(self.config.get('main', 'checkpoint_dir'))
+                if ckpt and ckpt.model_checkpoint_path:
+                    # Restores from checkpoint
+                    saver.restore(sess, ckpt.model_checkpoint_path)
+                    global_step = ckpt.model_checkpoint_path.split('/')[-1].split('-')[-1]
+                else:
+                    print('No checkpoint file found')
+                    return
+
+                # Start the queue runners.
+                coord = tf.train.Coordinator()
+                try:
+                    threads = []
+                    for qr in tf.get_collection(tf.GraphKeys.QUEUE_RUNNERS):
+                        threads.extend(qr.create_threads(sess, coord=coord, daemon=True,
+                                                         start=True))
+
+                    sample_count = int(self.config.get('main', 'num_examples_per_epoch_eval'))
+                    true_count = 0  # Counts the number of correct predictions.
+                    step = 0
+                    pred_correct = 0
+                    adv_correct = 0
+                    adv_diff = 0
+                    while step < sample_count and not coord.should_stop():
+                        raw_images_val, images_val, labels_val, cross_entropy_val, grad_val = sess.run([raw_images, images, labels, cross_entropy, grad[0]])
+                        step += 1
+                        for i in range(len(images_val)):
+                            image = raw_images_val[i]
+                            true_label = labels_val[i]
+
+                            grad_sign = np.sign(grad_val[i])
+                            grad_norm = sum([np.abs(W) for W in grad_val[i]])
+
+                            one_adv_correct = False
+                            one_pred_correct = False
+                            one_adv_diff = False
+                            for perturbation in np.linspace(adversarial_perturbation_min, 
+                                                            adversarial_perturbation_max, 
+                                                            adversarial_perturbation_steps):
+                                adv_image = perturbation * grad_sign + image
+                                adv_image_reshaped = np.reshape(adv_image, np.insert(adv_image.shape, 0 , 1))
+                                raw_image_reshaped = np.reshape(image, np.insert(image.shape, 0 , 1))
+
+                                pred_logit = sess.run(logits_single, feed_dict={x:raw_image_reshaped})
+                                pred_label = np.argmax(pred_logit)
+
+                                adv_pred = sess.run(logits_single, feed_dict={x:adv_image_reshaped})
+                                adv_label = np.argmax(adv_pred)
+
+                                if pred_label == true_label:
+                                    one_pred_correct = True
+                                if adv_label == true_label:
+                                    one_adv_correct = True
+                                if adv_label != pred_label:
+                                    one_adv_diff = True
+                            if one_pred_correct:
+                                pred_correct = pred_correct + 1
+                            if one_adv_correct:
+                                adv_correct = adv_correct + 1
+                            if one_adv_diff:
+                                adv_diff = adv_diff + 1
+
+                    print("PRED CORRECT: " + str(pred_correct))
+                    print("ADV CORRECT: " + str(adv_correct))
+                    print("ADV DIFF: " + str(adv_diff))
+
+                except Exception as e:
+                    coord.request_stop(e)
+                coord.request_stop()
+                coord.join(threads, stop_grace_period_secs=10)

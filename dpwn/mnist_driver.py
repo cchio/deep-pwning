@@ -112,8 +112,7 @@ def main(argv=None):
 
     fastgradientsign_advgen = FastGradientSign_AdvGen(cmd_args, [1, 28, 28, 1], saver, config)
     adv_out_df = fastgradientsign_advgen.run(input_dict)
-    # FIXME: CHECK IF IMAGE OUTPUT PATH DEFINED THEN OUTPUT IMAGE, 
-    # IF PICKLE FILE PATH DEFINED THEN SAVE PICKLE?
+
     pkl_path = config.get('main', 'pickle_filepath')
     utils.ensure_dir(os.path.dirname(pkl_path))
     with open(pkl_path, "wb") as pkl:
