@@ -104,14 +104,6 @@ def evaluate(config, cifar10_cnn, input_dict):
         del variables_to_restore['Variable']
         saver = tf.train.Saver(variables_to_restore)
 
-        # y_ = tf.one_hot(indices=tf.cast(labels, "int64"), 
-        #     depth=int(config.get('main', 'num_classes')), 
-        #     on_value=1.0, 
-        #     off_value=0.0)
-
-        # cross_entropy = tf.nn.softmax_cross_entropy_with_logits(logits, y_)
-        # grad = tf.gradients(cross_entropy, images)
-
         with tf.Session() as sess:
             ckpt = tf.train.get_checkpoint_state(config.get('main', 'checkpoint_dir'))
             if ckpt and ckpt.model_checkpoint_path:
@@ -137,15 +129,9 @@ def evaluate(config, cifar10_cnn, input_dict):
                 total_sample_count = num_iter * int(config.get('main', 'batch_size'))
                 step = 0
                 while step < num_iter and not coord.should_stop():
-                    # predictions, cross_entropy_val = sess.run([top_k_op, cross_entropy])
                     predictions = sess.run([top_k_op])
-                    # for image in images:
-                    #     print(image.shape)
-                    #     plt.imshow(image)
-                    #     plt.show()
                     true_count += np.sum(predictions)
                     step += 1
-                    # print(cross_entropy_val)
 
                 # Compute precision @ 1.
                 precision = true_count / total_sample_count
