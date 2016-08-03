@@ -3,6 +3,8 @@
 </p>
 Deep-pwning is a lightweight framework for experimenting with machine learning models with the goal of evaluating their robustness against a motivated adversary.
 
+Note that deep-pwning in its current state is ***no where*** close to maturity or completion. It is meant to be experimented with, expanded upon, and extended by you. Only then can we help it truly become the goto __penetration testing toolkit for statistical machine learning models__.
+
 ## Background
 Researchers have found that it is surprisingly trivial to trick a machine learning model (classifier, clusterer, regressor etc.) into making an objectively wrong decisions. This field of research is called [Adversarial Machine Learning](https://people.eecs.berkeley.edu/~tygar/papers/SML2/Adversarial_AISEC.pdf). It is not hyperbole to claim that any motivated attacker can bypass any machine learning system, given enough information and time. However, this issue is often overlooked when architects and engineers design and build machine learning systems. The consequences are worrying when these systems are put into use in critical scenarios, such as in the medical, transportation, financial, or security-related fields.
 
