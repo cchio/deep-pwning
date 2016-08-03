@@ -96,12 +96,12 @@ $ python mnist_driver.py
 
 ## Task list
 - [ ] Implement saliency graph method of generating adversarial samples
-- [ ] Add ```defense``` module to the project for generating
+- [ ] Add ```defense``` module to the project for examples of some defenses proposed in literature
 - [ ] Upgrade to Tensorflow 0.9.0
-- [ ] Add support for using pretrained word2vec model in ```sentiment driver```.
+- [ ] Add support for using pretrained word2vec model in ```sentiment driver```
 - [ ] Add SVM & Logistic Regression support in ```models``` (+ example that uses them)
-- [ ] Add non-image and non-phrase classifier example.
-- [ ] Add multi-GPU training support for faster training speeds.
+- [ ] Add non-image and non-phrase classifier example
+- [ ] Add multi-GPU training support for faster training speeds
 
 ## Requirements
 + [Tensorflow 0.8.0](https://www.tensorflow.org/versions/r0.8/get_started/os_setup.html)
