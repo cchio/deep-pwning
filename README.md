@@ -124,7 +124,7 @@ Note that dpwn requires Tensorflow 0.8.0. Tensorflow 0.9.0 introduces some
 
 ## Acknowledgements
 
-There is so much impressive work from so many machine learning and security researchers that directly or indirectly contributed to this project, and inspired this framework. This is an inconclusive list of resources that I used:
+There is so much impressive work from so many machine learning and security researchers that directly or indirectly contributed to this project, and inspired this framework. This is an inconclusive list of resources that was used or referenced in one way or another:
 
 ### Papers
 + Szegedy et al. [Intriguing properties of neural networks](https://arxiv.org/abs/1312.6199)
