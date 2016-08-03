@@ -28,7 +28,7 @@ These are the code modules that make up the current iteration of Deep-pwning:
 
 1. Drivers
 
-   The **drivers** are the *main* execution point of the code. This is where you can tie the different modules and comoponents together, and where you can inject more customizations into the adversarial generation processes.
+   The **drivers** are the *main* execution point of the code. This is where you can tie the different modules and components together, and where you can inject more customizations into the adversarial generation processes.
 
 2. Models
 
