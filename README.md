@@ -79,7 +79,7 @@ These are the resource directories relevant to the application:
 ## Getting Started
 
 ### Installation
-
+Please follow the directions to install tensorflow found here https://www.tensorflow.org/versions/r0.8/get_started/os_setup.html which will allow you to pick the tensorflow binary to install. 
 ```bash
 $ pip install -r requirements.txt
 ```
