@@ -141,7 +141,6 @@ There is so much impressive work from so many machine learning and security rese
 + Papernot et al. [Distillation as a Defense to Adversarial Perturbations against Deep Neural Networks](http://arxiv.org/abs/1511.04508)
 + Ororbia II et al. [Unifying Adversarial Training Algorithms with Flexible Deep Data Gradient Regularization](http://arxiv.org/abs/1601.07213)
 + Jin et al. [Robust Convolutional Neural Networks under Adversarial Noise](http://arxiv.org/abs/1511.06306)
-+ Pang et al. [Seeing stars: Exploiting class relationships for sentiment categorization with respect to rating scales](http://www.cs.cornell.edu/home/llee/papers/pang-lee-stars.home.html)
 + Goodfellow et al. [Deep Learning Adversarial Examples – Clarifying Misconceptions](http://www.kdnuggets.com/2015/07/deep-learning-adversarial-examples-misconceptions.html)
 
 ### Code
