@@ -1,5 +1,5 @@
 matplotlib==1.5.1
-numpy==1.11.1
+numpy==1.21.0
 pandas==0.18.1
 six==1.10.0
 tensorflow==2.5.3
